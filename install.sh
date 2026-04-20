@@ -2,7 +2,7 @@
 # FactuTPV Agent — one-liner installer for macOS and Linux.
 #
 # Uso (pegar en Terminal):
-#   curl -sSL https://raw.githubusercontent.com/ulisesbaena/factutpv-agent-releases/main/install.sh | bash
+#   curl -sSL https://cdn.jsdelivr.net/gh/ulisesbaena/factutpv-agent-releases@main/install.sh | bash
 #
 # Qué hace, paso por paso:
 #
@@ -27,7 +27,7 @@
 # o Windows también estaría comprometida.
 #
 # Para DESINSTALAR:
-#   curl -sSL https://raw.githubusercontent.com/ulisesbaena/factutpv-agent-releases/main/install.sh | bash -s -- uninstall
+#   curl -sSL https://cdn.jsdelivr.net/gh/ulisesbaena/factutpv-agent-releases@main/install.sh | bash -s -- uninstall
 
 set -euo pipefail
 
@@ -99,7 +99,7 @@ case "$(uname -s)" in
   Darwin) OS=darwin ; OS_LABEL="macOS" ;;
   Linux)  OS=linux  ; OS_LABEL="Linux" ;;
   *)      die "Sistema no soportado: $(uname -s). Para Windows ejecuta en PowerShell (como admin):
-        iwr -useb https://raw.githubusercontent.com/$REPO/main/install.ps1 | iex" ;;
+        iwr -useb https://cdn.jsdelivr.net/gh/$REPO@main/install.ps1 | iex" ;;
 esac
 
 case "$(uname -m)" in
@@ -218,5 +218,5 @@ case "$OS" in
   linux)  echo "    sudo journalctl -u factutpv-agent -f" ;;
 esac
 echo "  Desinstalar:"
-echo "    curl -sSL https://raw.githubusercontent.com/$REPO/main/install.sh | bash -s -- uninstall"
+echo "    curl -sSL https://cdn.jsdelivr.net/gh/$REPO@main/install.sh | bash -s -- uninstall"
 echo

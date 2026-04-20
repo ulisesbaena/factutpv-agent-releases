@@ -14,7 +14,7 @@ separate private repository.
 Abre **Terminal** (⌘-Space → "Terminal") y pega:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/ulisesbaena/factutpv-agent-releases/main/install.sh | bash
+curl -sSL https://cdn.jsdelivr.net/gh/ulisesbaena/factutpv-agent-releases@main/install.sh | bash
 ```
 
 El script detectará si tu Mac es Apple Silicon (M1/M2/M3/M4) o Intel,
@@ -32,7 +32,7 @@ Abre **PowerShell como administrador** (click derecho → "Ejecutar como
 administrador") y pega:
 
 ```powershell
-iwr -useb https://raw.githubusercontent.com/ulisesbaena/factutpv-agent-releases/main/install.ps1 | iex
+iwr -useb https://cdn.jsdelivr.net/gh/ulisesbaena/factutpv-agent-releases@main/install.ps1 | iex
 ```
 
 El UAC pedirá permiso una vez. El servicio `FactuTPVAgent` arrancará
@@ -46,7 +46,7 @@ al instante y después en cada arranque del ordenador.
 ### 🐧 Linux (Debian/Ubuntu/Fedora/openSUSE)
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/ulisesbaena/factutpv-agent-releases/main/install.sh | bash
+curl -sSL https://cdn.jsdelivr.net/gh/ulisesbaena/factutpv-agent-releases@main/install.sh | bash
 ```
 
 Detecta automáticamente `apt` / `dnf` / `zypper` y usa el paquete
@@ -155,15 +155,15 @@ soporte a soporte@factutpv.es.
 ### macOS / Linux
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/ulisesbaena/factutpv-agent-releases/main/install.sh | bash -s -- uninstall
+curl -sSL https://cdn.jsdelivr.net/gh/ulisesbaena/factutpv-agent-releases@main/install.sh | bash -s -- uninstall
 ```
 
 ### Windows (PowerShell admin)
 
 ```powershell
-iwr -useb https://raw.githubusercontent.com/ulisesbaena/factutpv-agent-releases/main/install.ps1 | iex
+iwr -useb https://cdn.jsdelivr.net/gh/ulisesbaena/factutpv-agent-releases@main/install.ps1 | iex
 # Y después, en la misma sesión:
-iex "iwr -useb https://raw.githubusercontent.com/ulisesbaena/factutpv-agent-releases/main/install.ps1; factutpv-uninstall"
+iex "iwr -useb https://cdn.jsdelivr.net/gh/ulisesbaena/factutpv-agent-releases@main/install.ps1; factutpv-uninstall"
 ```
 
 O manualmente desde "Agregar o quitar programas".

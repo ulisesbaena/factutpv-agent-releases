@@ -1,7 +1,7 @@
 # FactuTPV Agent — one-liner installer for Windows.
 #
 # Uso (pegar en PowerShell como administrador):
-#   iwr -useb https://raw.githubusercontent.com/ulisesbaena/factutpv-agent-releases/main/install.ps1 | iex
+#   iwr -useb https://cdn.jsdelivr.net/gh/ulisesbaena/factutpv-agent-releases@main/install.ps1 | iex
 #
 # Qué hace:
 #   1. Descarga el .msi más reciente desde
@@ -17,7 +17,7 @@
 # desaparecerá cuando tengamos el certificado de firma.
 #
 # Para DESINSTALAR (PowerShell admin):
-#   iwr -useb https://raw.githubusercontent.com/ulisesbaena/factutpv-agent-releases/main/install.ps1 | iex; factutpv-uninstall
+#   iwr -useb https://cdn.jsdelivr.net/gh/ulisesbaena/factutpv-agent-releases@main/install.ps1 | iex; factutpv-uninstall
 
 param(
     [string]$Action = "install"
@@ -146,7 +146,7 @@ Write-Host "    Restart-Service FactuTPVAgent"
 Write-Host "  Ver logs (Event Viewer):"
 Write-Host "    eventvwr.msc → Windows Logs → Application → filter FactuTPVAgent"
 Write-Host "  Desinstalar:"
-Write-Host "    iwr -useb https://raw.githubusercontent.com/$Repo/main/install.ps1 | iex -Args uninstall"
+Write-Host "    iwr -useb https://cdn.jsdelivr.net/gh/$Repo@main/install.ps1 | iex -Args uninstall"
 Write-Host ""
 
 # Clean up the installer MSI from temp — the installed service
