@@ -132,12 +132,12 @@ Write-Good "Servicio 'FactuTPVAgent' registrado, arrancando al boot"
 # --- Open admin panel + final guidance --------------------------
 Start-Sleep -Seconds 2
 Write-Info "Abriendo panel de administración..."
-try { Start-Process "http://127.0.0.1:17778/admin" } catch {}
+try { Start-Process "http://127.0.0.1:17777/admin" } catch {}
 
 Write-Host ""
 Write-Good "FactuTPV Agent instalado correctamente."
 Write-Host ""
-Write-Host "  Panel de administración: http://127.0.0.1:17778/admin"
+Write-Host "  Panel de administración: http://127.0.0.1:17777/admin"
 Write-Host "  Editar configuración:"
 Write-Host "    notepad `"C:\ProgramData\FactuTPV Agent\config.json`""
 Write-Host "    (necesitas abrir notepad como administrador)"

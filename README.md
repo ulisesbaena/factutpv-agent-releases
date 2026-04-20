@@ -98,7 +98,7 @@ vía WebSocket a tu agente).
 ## Primeros pasos tras instalar
 
 1. El panel de administración se abre automáticamente en
-   [http://localhost:17778/admin](http://localhost:17778/admin).
+   [http://localhost:17777/admin](http://localhost:17777/admin).
    Verás un código de 6 dígitos grande y centrado.
 2. En otra pestaña ve a [app.factutpv.es](https://app.factutpv.es),
    inicia sesión, y navega a **Ajustes → Agentes → Vincular nuevo**.

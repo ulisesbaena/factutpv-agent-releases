@@ -17,7 +17,7 @@
 #   4. Instala con sudo usando la herramienta nativa de cada
 #      plataforma (installer / apt / dnf / zypper). Pide tu
 #      contraseña una sola vez.
-#   5. Abre el panel de administración (http://127.0.0.1:17778/admin)
+#   5. Abre el panel de administración (http://127.0.0.1:17777/admin)
 #      en tu navegador. Ahí ves el código de 6 dígitos para
 #      vincular el agente con tu cuenta FactuTPV.
 #
@@ -159,7 +159,7 @@ case "$OS" in
     good "Servicio com.factutpv.agent registrado en launchd"
     sleep 2
     info "Abriendo panel de administración en el navegador..."
-    open "http://127.0.0.1:17778/admin" 2>/dev/null || true
+    open "http://127.0.0.1:17777/admin" 2>/dev/null || true
     ;;
 
   linux)
@@ -183,7 +183,7 @@ case "$OS" in
 
     # Try to open admin panel in browser if there's a GUI session.
     if [ -n "${DISPLAY:-}" ] && command -v xdg-open >/dev/null 2>&1; then
-      (sleep 2 && xdg-open "http://127.0.0.1:17778/admin") &
+      (sleep 2 && xdg-open "http://127.0.0.1:17777/admin") &
     fi
     ;;
 esac
@@ -192,7 +192,7 @@ esac
 echo
 good "FactuTPV Agent instalado correctamente."
 echo
-echo "  Panel de administración: http://127.0.0.1:17778/admin"
+echo "  Panel de administración: http://127.0.0.1:17777/admin"
 echo "  Editar configuración:"
 case "$OS" in
   darwin) echo "    sudo nano /Library/Application\\ Support/FactuTPV\\ Agent/config.json" ;;
