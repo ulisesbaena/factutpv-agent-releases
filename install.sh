@@ -138,9 +138,18 @@ DL_URL="$BASE/$ASSET"
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 
+# The downloaded file MUST keep its extension ($EXT = pkg | deb | rpm)
+# for the native installer to accept it. macOS's `installer -pkg <path>`
+# in particular rejects any path that doesn't end in ".pkg" with
+# "the package path specified was invalid", even if the file bytes
+# are a perfectly valid xar archive — it's a filename-suffix check,
+# not a content check. Same defensive habit on Linux so dpkg/apt/rpm
+# don't surprise us on minimal distros that validate extensions.
+PKG_FILE="$TMP/factutpv-agent.$EXT"
+
 # --- Download ----------------------------------------------------
 info "Descargando $ASSET..."
-if ! curl -fL --progress-bar "$DL_URL" -o "$TMP/pkg"; then
+if ! curl -fL --progress-bar "$DL_URL" -o "$PKG_FILE"; then
     die "No pude descargar $DL_URL
    Verifica tu conexión a internet.
    Si persiste, contacta: soporte@factutpv.es"
@@ -150,10 +159,10 @@ fi
 case "$OS" in
   darwin)
     info "Limpiando quarantine flag (evita el warning de Gatekeeper)..."
-    xattr -d com.apple.quarantine "$TMP/pkg" 2>/dev/null || true
+    xattr -d com.apple.quarantine "$PKG_FILE" 2>/dev/null || true
 
     info "Instalando — pedirá tu contraseña de administrador..."
-    sudo installer -pkg "$TMP/pkg" -target / || die "installer falló"
+    sudo installer -pkg "$PKG_FILE" -target / || die "installer falló"
 
     good "Instalado en /usr/local/bin/factutpv-agent"
     good "Servicio com.factutpv.agent registrado en launchd"
@@ -170,12 +179,12 @@ case "$OS" in
     if [ "$EXT" = "deb" ]; then
       info "Instalando con apt..."
       sudo apt-get update -qq
-      sudo apt-get install -y "$TMP/pkg"
+      sudo apt-get install -y "$PKG_FILE"
     else
       info "Instalando con rpm..."
-      sudo rpm -Uvh --force "$TMP/pkg" 2>/dev/null || \
-        sudo dnf install -y "$TMP/pkg" 2>/dev/null || \
-        sudo zypper install -y --allow-unsigned-rpm "$TMP/pkg" || \
+      sudo rpm -Uvh --force "$PKG_FILE" 2>/dev/null || \
+        sudo dnf install -y "$PKG_FILE" 2>/dev/null || \
+        sudo zypper install -y --allow-unsigned-rpm "$PKG_FILE" || \
         die "Ningún gestor (rpm/dnf/zypper) aceptó el paquete"
     fi
     good "Servicio factutpv-agent.service registrado en systemd"
