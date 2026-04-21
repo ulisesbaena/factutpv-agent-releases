@@ -54,6 +54,59 @@ adecuado. Registra `factutpv-agent.service` en systemd.
 
 ---
 
+## 🧪 Instalación **STAGING** (solo para testers)
+
+Si estás probando cambios nuevos antes de que salgan a producción, usa
+una **prerelease** pinchada a un tag concreto. Las prereleases apuntan a
+`api-stg.factutpv.es` por defecto, se emparejan con el stg del backend,
+y **no** interfieren con los clientes de producción (los one-liners de
+arriba siempre sirven el último release estable gracias a que GitHub
+omite las prereleases en la redirección `/releases/latest/`).
+
+El tag concreto cambia con cada ronda de testing — mira en la [página
+de releases](https://github.com/ulisesbaena/factutpv-agent-releases/releases)
+cuál es la prerelease más reciente (las marcadas con `Pre-release`, tipo
+`v1.1.0-stg.1`) y sustitúyelo en los comandos de abajo:
+
+**macOS / Linux** (Terminal):
+
+```bash
+FACTUTPV_INSTALL_BASE="https://github.com/ulisesbaena/factutpv-agent-releases/releases/download/v1.1.0-stg.1" \
+  curl -sSL https://cdn.jsdelivr.net/gh/ulisesbaena/factutpv-agent-releases@main/install.sh | bash
+```
+
+**Windows** (PowerShell como administrador):
+
+```powershell
+$env:FACTUTPV_INSTALL_BASE="https://github.com/ulisesbaena/factutpv-agent-releases/releases/download/v1.1.0-stg.1"
+iwr -useb https://cdn.jsdelivr.net/gh/ulisesbaena/factutpv-agent-releases@main/install.ps1 | iex
+```
+
+Tras instalar, abre `http://localhost:17777/admin`: verás un cartel
+visible "STAGING BUILD" dentro del `config.json` + el código de 6
+dígitos que emparejarás contra **app-stg.factutpv.es → Ajustes →
+Agentes → Vincular**.
+
+> ⚠️ No mezcles builds stg con clientes de producción. El agente stg
+> se comunica solo con `api-stg.factutpv.es`; intentar emparejarlo
+> contra `app.factutpv.es` no funcionará.
+
+Para volver al release de producción desde una instalación stg:
+
+```bash
+# macOS / Linux — desinstala + re-instala el one-liner normal
+curl -sSL https://cdn.jsdelivr.net/gh/ulisesbaena/factutpv-agent-releases@main/install.sh | bash -s -- uninstall
+curl -sSL https://cdn.jsdelivr.net/gh/ulisesbaena/factutpv-agent-releases@main/install.sh | bash
+```
+
+```powershell
+# Windows
+iwr -useb https://cdn.jsdelivr.net/gh/ulisesbaena/factutpv-agent-releases@main/install.ps1 | iex -Args uninstall
+iwr -useb https://cdn.jsdelivr.net/gh/ulisesbaena/factutpv-agent-releases@main/install.ps1 | iex
+```
+
+---
+
 ## Instalación manual (sin one-liner)
 
 Si prefieres descargar el instalador tú mismo, ve a la página de
