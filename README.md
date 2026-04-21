@@ -66,19 +66,19 @@ omite las prereleases en la redirección `/releases/latest/`).
 El tag concreto cambia con cada ronda de testing — mira en la [página
 de releases](https://github.com/ulisesbaena/factutpv-agent-releases/releases)
 cuál es la prerelease más reciente (las marcadas con `Pre-release`, tipo
-`v1.1.0-stg.3`) y sustitúyelo en los comandos de abajo:
+`v1.1.0-stg.4`) y sustitúyelo en los comandos de abajo:
 
 **macOS / Linux** (Terminal):
 
 ```bash
-FACTUTPV_INSTALL_BASE="https://github.com/ulisesbaena/factutpv-agent-releases/releases/download/v1.1.0-stg.3" \
+FACTUTPV_INSTALL_BASE="https://github.com/ulisesbaena/factutpv-agent-releases/releases/download/v1.1.0-stg.4" \
   curl -sSL https://cdn.jsdelivr.net/gh/ulisesbaena/factutpv-agent-releases@main/install.sh | bash
 ```
 
 **Windows** (PowerShell como administrador):
 
 ```powershell
-$env:FACTUTPV_INSTALL_BASE="https://github.com/ulisesbaena/factutpv-agent-releases/releases/download/v1.1.0-stg.3"
+$env:FACTUTPV_INSTALL_BASE="https://github.com/ulisesbaena/factutpv-agent-releases/releases/download/v1.1.0-stg.4"
 iwr -useb https://cdn.jsdelivr.net/gh/ulisesbaena/factutpv-agent-releases@main/install.ps1 | iex
 ```
 
