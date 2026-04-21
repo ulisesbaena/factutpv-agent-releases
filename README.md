@@ -66,30 +66,30 @@ omite las prereleases en la redirección `/releases/latest/`).
 El tag concreto cambia con cada ronda de testing — mira en la [página
 de releases](https://github.com/ulisesbaena/factutpv-agent-releases/releases)
 cuál es la prerelease más reciente (las marcadas con `Pre-release`, tipo
-`v1.1.0-stg.1`) y sustitúyelo en los comandos de abajo:
+`v1.1.0-stg.2`) y sustitúyelo en los comandos de abajo:
 
 **macOS / Linux** (Terminal):
 
 ```bash
-FACTUTPV_INSTALL_BASE="https://github.com/ulisesbaena/factutpv-agent-releases/releases/download/v1.1.0-stg.1" \
+FACTUTPV_INSTALL_BASE="https://github.com/ulisesbaena/factutpv-agent-releases/releases/download/v1.1.0-stg.2" \
   curl -sSL https://cdn.jsdelivr.net/gh/ulisesbaena/factutpv-agent-releases@main/install.sh | bash
 ```
 
 **Windows** (PowerShell como administrador):
 
 ```powershell
-$env:FACTUTPV_INSTALL_BASE="https://github.com/ulisesbaena/factutpv-agent-releases/releases/download/v1.1.0-stg.1"
+$env:FACTUTPV_INSTALL_BASE="https://github.com/ulisesbaena/factutpv-agent-releases/releases/download/v1.1.0-stg.2"
 iwr -useb https://cdn.jsdelivr.net/gh/ulisesbaena/factutpv-agent-releases@main/install.ps1 | iex
 ```
 
 Tras instalar, abre `http://localhost:17777/admin`: verás un cartel
 visible "STAGING BUILD" dentro del `config.json` + el código de 6
-dígitos que emparejarás contra **app-stg.factutpv.es → Ajustes →
+dígitos que emparejarás contra **stg.factutpv.es → Ajustes →
 Agentes → Vincular**.
 
 > ⚠️ No mezcles builds stg con clientes de producción. El agente stg
 > se comunica solo con `api-stg.factutpv.es`; intentar emparejarlo
-> contra `app.factutpv.es` no funcionará.
+> contra `factutpv.es` no funcionará.
 
 Para volver al release de producción desde una instalación stg:
 
@@ -131,7 +131,7 @@ para quien prefiera empaquetar manualmente. Su SHA-256 está en
 
 El agente es un daemon que corre en un ordenador dentro de tu red
 local y hace de puente entre el navegador (tu TPV en
-[app.factutpv.es](https://app.factutpv.es)) y **cualquier impresora
+[factutpv.es](https://factutpv.es)) y **cualquier impresora
 térmica ESC/POS**:
 
 - **USB** (cable directo; en Windows sin necesidad de Zadig)
@@ -153,7 +153,7 @@ vía WebSocket a tu agente).
 1. El panel de administración se abre automáticamente en
    [http://localhost:17777/admin](http://localhost:17777/admin).
    Verás un código de 6 dígitos grande y centrado.
-2. En otra pestaña ve a [app.factutpv.es](https://app.factutpv.es),
+2. En otra pestaña ve a [factutpv.es](https://factutpv.es),
    inicia sesión, y navega a **Ajustes → Agentes → Vincular nuevo**.
 3. Teclea el código de 6 dígitos, pulsa **Vincular**, y el panel
    del agente pasará de "Sin vincular" a "Conectado".
