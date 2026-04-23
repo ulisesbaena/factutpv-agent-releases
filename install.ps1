@@ -187,10 +187,66 @@ Envía ese archivo a soporte@factutpv.es para que te ayudemos.
 }
 
 Write-Good "Instalado"
-Write-Good "Servicio 'FactuTPVAgent' registrado, arrancando al boot"
+
+# --- Make sure the service is actually running ------------------
+#
+# The WiX manifest ships with Start="install" so msiexec triggers
+# StartService and Wait="yes" blocks until SCM reports RUNNING.
+# In theory the service is up by the time we reach this point.
+# In practice some combinations (older Windows Installer, slow
+# disks, AV scanning the new EXE, a previous failed install
+# leaving the service Disabled) fall off that happy path. Belt-
+# and-braces: check Get-Service, attempt Start-Service if needed,
+# and poll /healthz until it answers before opening the browser.
+$svc = Get-Service -Name "FactuTPVAgent" -ErrorAction SilentlyContinue
+if (-not $svc) {
+    Write-Die @"
+El servicio 'FactuTPVAgent' no quedó registrado por el MSI. Revisa
+el log en $logFile y contacta soporte@factutpv.es.
+"@
+}
+
+if ($svc.Status -ne "Running") {
+    Write-Info "Arrancando servicio FactuTPVAgent..."
+    try {
+        Start-Service -Name "FactuTPVAgent" -ErrorAction Stop
+    } catch {
+        Write-Die @"
+No pude arrancar el servicio FactuTPVAgent.
+Revisa Event Viewer → Windows Logs → Application → filter FactuTPVAgent
+para ver el motivo exacto y contacta soporte@factutpv.es.
+
+Detalle: $($_.Exception.Message)
+"@
+    }
+}
+
+# Wait for /healthz to answer. The service reports RUNNING to the
+# SCM BEFORE it finishes binding to :17777 (binding happens on a
+# goroutine after svc.Run returns), so a bare Get-Service check
+# isn't enough. 15 s is generous — on a normal machine the HTTP
+# server is up in <1 s; on a slow laptop or under heavy AV scanning
+# it can take 3-5 s. If the deadline fires we still open the
+# browser page because it'll auto-retry on the "refresh" button
+# once the service catches up.
+Write-Info "Esperando a que el panel responda..."
+$deadline = (Get-Date).AddSeconds(15)
+$ready = $false
+while ((Get-Date) -lt $deadline) {
+    try {
+        $r = Invoke-WebRequest -Uri "http://127.0.0.1:17777/healthz" `
+            -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop
+        if ($r.StatusCode -eq 200) { $ready = $true; break }
+    } catch { Start-Sleep -Milliseconds 400 }
+}
+if ($ready) {
+    Write-Good "Servicio 'FactuTPVAgent' arrancado (panel responde en :17777)"
+} else {
+    Write-Warn "El servicio está registrado pero el panel aún no responde."
+    Write-Warn "Abriremos el navegador — si sale 'conexión rechazada', espera 5 s y pulsa Recargar."
+}
 
 # --- Open admin panel + final guidance --------------------------
-Start-Sleep -Seconds 2
 Write-Info "Abriendo panel de administración..."
 try { Start-Process "http://127.0.0.1:17777/admin" } catch {}
 
