@@ -206,6 +206,23 @@ el log en $logFile y contacta soporte@factutpv.es.
 "@
 }
 
+# Configure recovery: auto-restart the service if it crashes for ANY
+# reason (unpair from the admin panel, panic, OOM, …). Without this,
+# an unpair left the service in Stopped state because OnUnpair calls
+# os.Exit(0) expecting the supervisor to relaunch — launchd/systemd
+# do that by default; Windows SCM does not unless failure actions are
+# configured. Seen live on the pilot Windows 11 host: unpairing the
+# agent killed the service and the local admin panel went 503.
+#
+# "reset= 60" — failure counter resets after 60s without incident.
+# "actions= restart/5000/…" — restart after 5s on first, second and
+#                             subsequent failures. SCM stops after 3
+#                             attempts unless another 60s-free window
+#                             passes, which protects against a crash-
+#                             loop saturating CPU.
+Write-Info "Configurando recovery del servicio (auto-restart en crashes)..."
+& sc.exe failure FactuTPVAgent reset= 60 actions= restart/5000/restart/5000/restart/5000 | Out-Null
+
 if ($svc.Status -ne "Running") {
     Write-Info "Arrancando servicio FactuTPVAgent..."
     try {
