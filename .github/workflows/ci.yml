@@ -1,0 +1,37 @@
+name: installer-ci
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: installer-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-installers:
+    runs-on: [self-hosted, ci-light, linux, x64]
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse POSIX installer
+        run: bash -n install.sh
+      - name: Parse PowerShell installer
+        run: |
+          docker run --rm \
+            --volume "$PWD:/repo:ro" \
+            mcr.microsoft.com/powershell:7.4-debian-12 \
+            pwsh -NoLogo -NoProfile -NonInteractive -Command '
+              $tokens = $null
+              $errors = $null
+              [void][System.Management.Automation.Language.Parser]::ParseFile("/repo/install.ps1", [ref]$tokens, [ref]$errors)
+              if ($errors.Count -gt 0) {
+                $errors | ForEach-Object { Write-Error $_.Message }
+                exit 1
+              }
+            '
