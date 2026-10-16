@@ -15,7 +15,9 @@ concurrency:
 
 jobs:
   validate-installers:
-    runs-on: [self-hosted, ci-light, linux, x64]
+    # This repository is public: never attach a persistent Forja runner to
+    # pull-request code. GitHub-hosted runners are fresh, isolated VMs.
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
