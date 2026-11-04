@@ -37,3 +37,5 @@ jobs:
                 exit 1
               }
             '
+      - name: Verify installer integrity paths offline
+        run: bash tests/installer-integrity.test.sh

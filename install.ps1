@@ -10,7 +10,9 @@
 #      sin diálogos) — el UAC pedirá permiso UNA sola vez
 #   3. Abre el panel de administración en el navegador
 #
-# Seguridad: descarga siempre vía HTTPS contra el CDN de GitHub.
+# Seguridad: descarga siempre vía HTTPS contra el CDN de GitHub y
+# verifica SHA-256 contra el SHA256SUMS de la misma release antes de
+# ejecutar msiexec.
 # El .msi todavía no está firmado con cert EV — Windows SmartScreen
 # mostrará un aviso "Windows ha protegido tu PC" la primera vez.
 # Botón "Más información" → "Ejecutar de todas formas". Este warning
@@ -40,6 +42,7 @@ $Base = if ($env:FACTUTPV_INSTALL_BASE) {
 } else {
     "https://github.com/$Repo/releases/latest/download"
 }
+$VerifyOnly = $env:FACTUTPV_VERIFY_ONLY -eq "1"
 
 function Write-Info($msg) { Write-Host "▸ $msg" -ForegroundColor Cyan }
 function Write-Good($msg) { Write-Host "✓ $msg" -ForegroundColor Green }
@@ -49,8 +52,11 @@ function Write-Die($msg)  { Write-Host "✗ $msg" -ForegroundColor Red; exit 1 }
 # Admin elevation check. MSI install genuinely needs admin — we
 # verify up front so users don't get a confusing failure 30 s
 # into the download.
-$isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-if (-not $isAdmin) {
+$isAdmin = $false
+if (-not $VerifyOnly) {
+    $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+}
+if (-not $VerifyOnly -and -not $isAdmin) {
     Write-Die @"
 Este instalador necesita permisos de administrador para registrar
 el servicio del sistema.
@@ -144,6 +150,7 @@ Write-Info "Plataforma: Windows x64"
 $assetName = "factutpv-agent-windows-amd64.msi"
 $url       = "$Base/$assetName"
 $tmp       = Join-Path $env:TEMP "factutpv-agent-installer.msi"
+$sumsFile  = Join-Path $env:TEMP "factutpv-agent-SHA256SUMS"
 
 Write-Info "Descargando $url..."
 try {
@@ -162,6 +169,38 @@ Detalle: $($_.Exception.Message)
 }
 
 Write-Good "Descarga completa ($([math]::Round((Get-Item $tmp).Length / 1MB, 2)) MB)"
+
+Write-Info "Verificando SHA-256 antes de instalar..."
+try {
+    Invoke-WebRequest -Uri "$Base/SHA256SUMS" -OutFile $sumsFile -UseBasicParsing
+} catch {
+    Write-Die @"
+La release no publica SHA256SUMS; rechazo instalar sin verificación.
+Verifica que el tag corresponde al pipeline de releases actual.
+
+Detalle: $($_.Exception.Message)
+"@
+}
+
+$checksumPattern = '^(?<hash>[0-9A-Fa-f]{64})\s+\*?' + [Regex]::Escape($assetName) + '$'
+$matchingLines = @(Get-Content -LiteralPath $sumsFile | Where-Object { $_ -match $checksumPattern })
+if ($matchingLines.Count -ne 1) {
+    Write-Die "SHA256SUMS no contiene exactamente una entrada válida para $assetName"
+}
+$expectedSha = ([Regex]::Match($matchingLines[0], $checksumPattern).Groups['hash'].Value).ToLowerInvariant()
+$actualSha = ((Get-FileHash -LiteralPath $tmp -Algorithm SHA256).Hash).ToLowerInvariant()
+if ($actualSha -ne $expectedSha) {
+    Write-Die "SHA-256 incorrecto para $assetName; el instalador no se ejecutará."
+}
+Write-Good "SHA-256 verificado"
+
+# CI exercises the real HTTP download and checksum path, then stops before
+# msiexec/UAC or any service mutation.
+if ($VerifyOnly) {
+    Remove-Item -LiteralPath $tmp, $sumsFile -Force -ErrorAction SilentlyContinue
+    Write-Good "Verificación aislada completada"
+    exit 0
+}
 
 # --- Install ----------------------------------------------------
 Write-Info "Ejecutando instalador (el UAC pedirá permiso una vez)..."
