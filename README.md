@@ -22,6 +22,11 @@ descargará el `.pkg` adecuado, lo instalará y abrirá el panel de
 administración en el navegador. **Pedirá tu contraseña una vez**
 (para instalar el servicio del sistema).
 
+Antes de pedir la contraseña, compara automáticamente el SHA-256 del
+paquete con el `SHA256SUMS` de la release y aborta ante cualquier
+diferencia. Esta comprobación detecta corrupción o una mezcla accidental
+de releases; no autentica por sí sola al publicador.
+
 > Si ves una advertencia de macOS "Apple no puede comprobar...", el
 > script la sortea automáticamente. Puedes verificar el binario tú
 > mismo con los checksums SHA-256 en `releases.json` de cada release.
@@ -37,6 +42,9 @@ iwr -useb https://cdn.jsdelivr.net/gh/ulisesbaena/factutpv-agent-releases@main/i
 
 El UAC pedirá permiso una vez. El servicio `FactuTPVAgent` arrancará
 al instante y después en cada arranque del ordenador.
+
+El MSI se verifica contra `SHA256SUMS` antes de ejecutar `msiexec`. Es una
+comprobación de integridad y coherencia de release, no una firma de código.
 
 > La primera vez Windows SmartScreen puede mostrar "Windows ha protegido
 > tu PC" → click en **Más información** → **Ejecutar de todas formas**.
@@ -225,8 +233,14 @@ O manualmente desde "Agregar o quitar programas".
 
 ## Verificar checksums
 
-Cada release incluye un fichero `releases.json` con los SHA-256
-de los binarios raw. Para verificar:
+Cada release incluye:
+
+- `SHA256SUMS`, consumido automáticamente por los instaladores de un comando
+  para detectar corrupción y desincronización.
+- `releases.json`, cuyo manifiesto Ed25519 firmado cubre tanto binarios raw
+  como instaladores y es verificado por el auto-updater del agente.
+
+Para verificar manualmente:
 
 ```bash
 # Descarga el manifest
@@ -237,12 +251,25 @@ curl -L -o /tmp/bin https://github.com/ulisesbaena/factutpv-agent-releases/relea
 
 # Compara:
 shasum -a 256 /tmp/bin
-# y busca el mismo hash dentro de /tmp/releases.json
+# y busca el mismo hash dentro de /tmp/releases.json o SHA256SUMS
 ```
 
-Los instaladores (`.pkg`, `.msi`, `.deb`, `.rpm`) no llevan
-checksum firmado en `releases.json` todavía; se publicarán en la
-siguiente revisión del pipeline.
+Los one-liners fallan cerrado si falta `SHA256SUMS`, la entrada del
+instalador está duplicada o el hash descargado no coincide.
+
+`SHA256SUMS` y el instalador se alojan en la misma release, por lo que esta
+comparación no autentica al publicador ante un compromiso del canal. Los
+one-liners todavía no verifican la firma Ed25519 de `releases.json`, y la
+firma nativa/notarización de los paquetes sigue pendiente.
+
+### Orden de despliegue de este contrato
+
+El instalador estricto requiere que la release estable más reciente ya
+publique `SHA256SUMS`. Por eso el orden seguro es: fusionar primero el
+pipeline privado del agente, publicar y comprobar una release estable, y
+solo entonces fusionar los cambios de `install.sh` / `install.ps1` de este
+repositorio. Invertir ese orden bloquearía temporalmente instalaciones
+nuevas, de forma deliberada y segura.
 
 ---
 

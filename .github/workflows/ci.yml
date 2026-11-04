@@ -20,14 +20,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Parse POSIX installer
         run: bash -n install.sh
       - name: Parse PowerShell installer
         run: |
           docker run --rm \
             --volume "$PWD:/repo:ro" \
-            mcr.microsoft.com/powershell:7.4-debian-12 \
+            mcr.microsoft.com/powershell:7.4-debian-12@sha256:206a748b34deec1b64553fcfa92294fc871c2df5855e9f340df172756bef201f \
             pwsh -NoLogo -NoProfile -NonInteractive -Command '
               $tokens = $null
               $errors = $null
@@ -37,3 +37,5 @@ jobs:
                 exit 1
               }
             '
+      - name: Verify installer integrity paths offline
+        run: bash tests/installer-integrity.test.sh

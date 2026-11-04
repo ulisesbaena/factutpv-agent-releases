@@ -21,10 +21,10 @@
 #      en tu navegador. Ahí ves el código de 6 dígitos para
 #      vincular el agente con tu cuenta FactuTPV.
 #
-# Seguridad en tránsito: la descarga va siempre por HTTPS con
-# el cert de github.com. Un MITM tendría que romper TLS del CDN
-# de GitHub — a ese nivel cualquier otra actualización de macOS
-# o Windows también estaría comprometida.
+# Integridad: antes de invocar sudo, el script fija la release resuelta
+# y compara el SHA-256 del instalador con su SHA256SUMS. Esto detecta
+# corrupción y desincronización, pero no autentica al publicador porque
+# ambos ficheros comparten hosting. La firma nativa sigue pendiente.
 #
 # Para DESINSTALAR:
 #   curl -sSL https://cdn.jsdelivr.net/gh/ulisesbaena/factutpv-agent-releases@main/install.sh | bash -s -- uninstall
@@ -37,6 +37,7 @@ BASE="https://github.com/$REPO/releases/latest/download"
 # Overridable via env var for testing against a pinned version:
 #   FACTUTPV_INSTALL_BASE=https://github.com/$REPO/releases/download/v0.2.0 bash install.sh
 BASE="${FACTUTPV_INSTALL_BASE:-$BASE}"
+VERIFY_ONLY="${FACTUTPV_VERIFY_ONLY:-0}"
 
 # Colour helpers. isatty() check so piping to a log file doesn't
 # litter the output with escape codes.
@@ -133,7 +134,6 @@ if [ "$OS" = "darwin" ]; then
 else
   ASSET="factutpv-agent-linux-$ARCH.$EXT"
 fi
-DL_URL="$BASE/$ASSET"
 
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
@@ -146,13 +146,77 @@ trap 'rm -rf "$TMP"' EXIT
 # not a content check. Same defensive habit on Linux so dpkg/apt/rpm
 # don't surprise us on minimal distros that validate extensions.
 PKG_FILE="$TMP/factutpv-agent.$EXT"
+SUMS_FILE="$TMP/SHA256SUMS"
 
-# --- Download ----------------------------------------------------
+# --- Resolve release + download checksums first -----------------
+# /releases/latest/download is mutable between requests. Resolve its first
+# redirect to an immutable /releases/download/<tag> base, then use only that
+# base for both SHA256SUMS and the installer.
+RELEASE_BASE=${BASE%/}
+case "$RELEASE_BASE" in
+  */releases/latest/download)
+    RELEASE_PREFIX=${RELEASE_BASE%/latest/download}
+    REDIRECT_URL=$(curl -fsS -o /dev/null -w '%{redirect_url}' \
+      "$RELEASE_BASE/SHA256SUMS") \
+      || die "No pude resolver la release estable para descargar SHA256SUMS."
+    case "$REDIRECT_URL" in
+      "$RELEASE_PREFIX"/download/*/SHA256SUMS) ;;
+      *) die "La redirección de latest no apunta a una release versionada válida." ;;
+    esac
+    RELEASE_PATH=${REDIRECT_URL#"$RELEASE_PREFIX/download/"}
+    RESOLVED_TAG=${RELEASE_PATH%/SHA256SUMS}
+    case "$RESOLVED_TAG" in
+      ""|*/*) die "No pude extraer un tag único de la release resuelta." ;;
+    esac
+    RELEASE_BASE=${REDIRECT_URL%/SHA256SUMS}
+    ;;
+  *)
+    RESOLVED_TAG=${RELEASE_BASE##*/}
+    ;;
+esac
+info "Release fijada: $RESOLVED_TAG"
+
+info "Descargando SHA256SUMS..."
+if ! curl -fsSL "$RELEASE_BASE/SHA256SUMS" -o "$SUMS_FILE"; then
+    die "La release no publica SHA256SUMS; rechazo instalar sin verificación.
+   Verifica que el tag corresponde al pipeline de releases actual."
+fi
+EXPECTED_SHA=$(awk -v asset="$ASSET" '
+  $2 == asset || $2 == "*" asset { count++; sha=tolower($1) }
+  END {
+    if (count != 1 || length(sha) != 64 || sha !~ /^[0-9a-f]+$/) exit 1
+    print sha
+  }
+' "$SUMS_FILE") || die "SHA256SUMS no contiene exactamente una entrada válida para $ASSET"
+
+# --- Download the installer from that exact release -------------
+DL_URL="$RELEASE_BASE/$ASSET"
 info "Descargando $ASSET..."
 if ! curl -fL --progress-bar "$DL_URL" -o "$PKG_FILE"; then
     die "No pude descargar $DL_URL
    Verifica tu conexión a internet.
    Si persiste, contacta: soporte@factutpv.es"
+fi
+
+if command -v sha256sum >/dev/null 2>&1; then
+  ACTUAL_SHA=$(sha256sum "$PKG_FILE" | awk '{print tolower($1)}')
+elif command -v shasum >/dev/null 2>&1; then
+  ACTUAL_SHA=$(shasum -a 256 "$PKG_FILE" | awk '{print tolower($1)}')
+else
+  die "No encuentro sha256sum ni shasum; no puedo verificar el instalador."
+fi
+
+if [ "$ACTUAL_SHA" != "$EXPECTED_SHA" ]; then
+  die "SHA-256 incorrecto para $ASSET; el instalador no se ejecutará."
+fi
+good "SHA-256 verificado"
+
+# Test hook: exercises the real download + verification path but exits before
+# any privileged package-manager command. It is intentionally undocumented for
+# end users and only accepted when set to the exact value 1.
+if [ "$VERIFY_ONLY" = "1" ]; then
+  good "Verificación aislada completada"
+  exit 0
 fi
 
 # --- Platform-specific install path ------------------------------
