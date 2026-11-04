@@ -10,9 +10,10 @@
 #      sin diálogos) — el UAC pedirá permiso UNA sola vez
 #   3. Abre el panel de administración en el navegador
 #
-# Seguridad: descarga siempre vía HTTPS contra el CDN de GitHub y
-# verifica SHA-256 contra el SHA256SUMS de la misma release antes de
-# ejecutar msiexec.
+# Integridad: fija la release resuelta y verifica SHA-256 contra su
+# SHA256SUMS antes de ejecutar msiexec. Esto detecta corrupción y
+# desincronización, pero no autentica al publicador porque ambos
+# ficheros comparten hosting. La firma nativa sigue pendiente.
 # El .msi todavía no está firmado con cert EV — Windows SmartScreen
 # mostrará un aviso "Windows ha protegido tu PC" la primera vez.
 # Botón "Más información" → "Ejecutar de todas formas". Este warning
@@ -148,31 +149,48 @@ Write-Info "Plataforma: Windows x64"
 # redirects to whichever tag is "latest" so one URL keeps working
 # release after release.
 $assetName = "factutpv-agent-windows-amd64.msi"
-$url       = "$Base/$assetName"
 $tmp       = Join-Path $env:TEMP "factutpv-agent-installer.msi"
 $sumsFile  = Join-Path $env:TEMP "factutpv-agent-SHA256SUMS"
 
-Write-Info "Descargando $url..."
-try {
-    # UseBasicParsing keeps this working on PowerShell 5 (Windows
-    # default) without needing IE COM — IE is deprecated and
-    # optional on modern Windows.
-    Invoke-WebRequest -Uri $url -OutFile $tmp -UseBasicParsing
-} catch {
-    Write-Die @"
-No pude descargar $url
-Verifica tu conexión a internet.
-Si persiste, contacta: soporte@factutpv.es
+# /releases/latest/download is mutable between requests. Resolve its first
+# redirect to an immutable /releases/download/<tag> base, then use only that
+# base for both SHA256SUMS and the MSI.
+$releaseBase = $Base.TrimEnd('/')
+if ($releaseBase.EndsWith('/releases/latest/download', [StringComparison]::Ordinal)) {
+    $releasePrefix = $releaseBase.Substring(0, $releaseBase.Length - '/latest/download'.Length)
+    $probeUrl = "$releaseBase/SHA256SUMS"
+    $response = $null
+    try {
+        $request = [System.Net.HttpWebRequest]::Create($probeUrl)
+        $request.AllowAutoRedirect = $false
+        $request.Method = 'GET'
+        $response = $request.GetResponse()
+        $location = $response.Headers['Location']
+    } catch {
+        Write-Die "No pude resolver la release estable para descargar SHA256SUMS: $($_.Exception.Message)"
+    } finally {
+        if ($response) { $response.Close() }
+    }
 
-Detalle: $($_.Exception.Message)
-"@
+    if (-not $location) {
+        Write-Die "La URL latest no devolvió una redirección de release."
+    }
+    $location = ([Uri]::new([Uri]$probeUrl, $location)).AbsoluteUri
+    $resolvedPattern = '^' + [Regex]::Escape($releasePrefix) + '/download/(?<tag>[^/]+)/SHA256SUMS$'
+    $resolvedMatch = [Regex]::Match($location, $resolvedPattern)
+    if (-not $resolvedMatch.Success) {
+        Write-Die "La redirección de latest no apunta a una release versionada válida."
+    }
+    $resolvedTag = [Uri]::UnescapeDataString($resolvedMatch.Groups['tag'].Value)
+    $releaseBase = $location.Substring(0, $location.Length - '/SHA256SUMS'.Length)
+} else {
+    $resolvedTag = $releaseBase.Substring($releaseBase.LastIndexOf('/') + 1)
 }
+Write-Info "Release fijada: $resolvedTag"
 
-Write-Good "Descarga completa ($([math]::Round((Get-Item $tmp).Length / 1MB, 2)) MB)"
-
-Write-Info "Verificando SHA-256 antes de instalar..."
+Write-Info "Descargando SHA256SUMS..."
 try {
-    Invoke-WebRequest -Uri "$Base/SHA256SUMS" -OutFile $sumsFile -UseBasicParsing
+    Invoke-WebRequest -Uri "$releaseBase/SHA256SUMS" -OutFile $sumsFile -UseBasicParsing
 } catch {
     Write-Die @"
 La release no publica SHA256SUMS; rechazo instalar sin verificación.
@@ -188,6 +206,26 @@ if ($matchingLines.Count -ne 1) {
     Write-Die "SHA256SUMS no contiene exactamente una entrada válida para $assetName"
 }
 $expectedSha = ([Regex]::Match($matchingLines[0], $checksumPattern).Groups['hash'].Value).ToLowerInvariant()
+
+$url = "$releaseBase/$assetName"
+Write-Info "Descargando $url..."
+try {
+    # UseBasicParsing keeps this working on PowerShell 5 (Windows
+    # default) without needing IE COM — IE is deprecated and
+    # optional on modern Windows.
+    Invoke-WebRequest -Uri $url -OutFile $tmp -UseBasicParsing
+} catch {
+    Write-Die @"
+No pude descargar $url
+Verifica tu conexión a internet.
+Si persiste, contacta: soporte@factutpv.es
+
+Detalle: $($_.Exception.Message)
+"@
+}
+Write-Good "Descarga completa ($([math]::Round((Get-Item $tmp).Length / 1MB, 2)) MB)"
+
+Write-Info "Verificando SHA-256 antes de instalar..."
 $actualSha = ((Get-FileHash -LiteralPath $tmp -Algorithm SHA256).Hash).ToLowerInvariant()
 if ($actualSha -ne $expectedSha) {
     Write-Die "SHA-256 incorrecto para $assetName; el instalador no se ejecutará."

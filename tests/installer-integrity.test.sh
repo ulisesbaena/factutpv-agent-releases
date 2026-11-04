@@ -5,6 +5,22 @@ repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 fixture_root=$(mktemp -d)
 server_log="$fixture_root/http.log"
 port=18777
+checkout_sha=3d3c42e5aac5ba805825da76410c181273ba90b1
+pwsh_image='mcr.microsoft.com/powershell:7.4-debian-12@sha256:206a748b34deec1b64553fcfa92294fc871c2df5855e9f340df172756bef201f'
+
+require_before() {
+  local file=$1 first=$2 second=$3 first_line second_line
+  first_line=$(grep -nF "$first" "$file" | head -1 | cut -d: -f1)
+  second_line=$(grep -nF "$second" "$file" | head -1 | cut -d: -f1)
+  [[ -n "$first_line" && -n "$second_line" && "$first_line" -lt "$second_line" ]]
+}
+
+grep -Fq "actions/checkout@$checkout_sha" "$repo_root/.github/workflows/ci.yml"
+grep -Fq "$pwsh_image" "$repo_root/.github/workflows/ci.yml"
+require_before "$repo_root/install.sh" \
+  'curl -fsSL "$RELEASE_BASE/SHA256SUMS"' 'DL_URL="$RELEASE_BASE/$ASSET"'
+require_before "$repo_root/install.ps1" \
+  'Invoke-WebRequest -Uri "$releaseBase/SHA256SUMS"' '$url = "$releaseBase/$assetName"'
 
 cleanup() {
   if [[ -n "${server_pid:-}" ]]; then
@@ -31,22 +47,23 @@ for asset in \
   printf '%064d  %s\n' 0 "$asset" >> "$fixture_root/bad/SHA256SUMS"
 done
 
-python3 -m http.server "$port" --bind 0.0.0.0 --directory "$fixture_root" >"$server_log" 2>&1 &
+python3 "$repo_root/tests/installer_fixture_server.py" \
+  --root "$fixture_root" --port "$port" >"$server_log" 2>&1 &
 server_pid=$!
 for _ in $(seq 1 50); do
-  if curl -fsS "http://127.0.0.1:$port/good/SHA256SUMS" >/dev/null 2>&1; then
+  if curl -fsSL "http://127.0.0.1:$port/good/releases/latest/download/SHA256SUMS" >/dev/null 2>&1; then
     break
   fi
   sleep 0.1
 done
-curl -fsS "http://127.0.0.1:$port/good/SHA256SUMS" >/dev/null
+curl -fsSL "http://127.0.0.1:$port/good/releases/latest/download/SHA256SUMS" >/dev/null
 
 FACTUTPV_VERIFY_ONLY=1 \
-FACTUTPV_INSTALL_BASE="http://127.0.0.1:$port/good" \
+FACTUTPV_INSTALL_BASE="http://127.0.0.1:$port/good/releases/latest/download" \
   bash "$repo_root/install.sh"
 
 if FACTUTPV_VERIFY_ONLY=1 \
-   FACTUTPV_INSTALL_BASE="http://127.0.0.1:$port/bad" \
+   FACTUTPV_INSTALL_BASE="http://127.0.0.1:$port/bad/releases/latest/download" \
      bash "$repo_root/install.sh"; then
   echo "POSIX installer accepted a mismatched checksum" >&2
   exit 1
@@ -60,10 +77,10 @@ run_pwsh() {
   fi
   docker run --rm --network host \
     --env FACTUTPV_VERIFY_ONLY=1 \
-    --env "FACTUTPV_INSTALL_BASE=http://$docker_host:$port/$case_name" \
+    --env "FACTUTPV_INSTALL_BASE=http://$docker_host:$port/$case_name/releases/latest/download" \
     --env TEMP=/tmp \
     --volume "$repo_root:/repo:ro" \
-    mcr.microsoft.com/powershell:7.4-debian-12 \
+    "$pwsh_image" \
     pwsh -NoLogo -NoProfile -NonInteractive -File /repo/install.ps1
 }
 

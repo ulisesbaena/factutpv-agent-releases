@@ -21,10 +21,10 @@
 #      en tu navegador. Ahí ves el código de 6 dígitos para
 #      vincular el agente con tu cuenta FactuTPV.
 #
-# Seguridad: la descarga va por HTTPS y, antes de invocar sudo, el
-# script compara el SHA-256 del instalador con el SHA256SUMS de la
-# misma release. Un fichero incompleto, corrupto o desincronizado
-# nunca llega al gestor de paquetes.
+# Integridad: antes de invocar sudo, el script fija la release resuelta
+# y compara el SHA-256 del instalador con su SHA256SUMS. Esto detecta
+# corrupción y desincronización, pero no autentica al publicador porque
+# ambos ficheros comparten hosting. La firma nativa sigue pendiente.
 #
 # Para DESINSTALAR:
 #   curl -sSL https://cdn.jsdelivr.net/gh/ulisesbaena/factutpv-agent-releases@main/install.sh | bash -s -- uninstall
@@ -134,7 +134,6 @@ if [ "$OS" = "darwin" ]; then
 else
   ASSET="factutpv-agent-linux-$ARCH.$EXT"
 fi
-DL_URL="$BASE/$ASSET"
 
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
@@ -149,16 +148,36 @@ trap 'rm -rf "$TMP"' EXIT
 PKG_FILE="$TMP/factutpv-agent.$EXT"
 SUMS_FILE="$TMP/SHA256SUMS"
 
-# --- Download ----------------------------------------------------
-info "Descargando $ASSET..."
-if ! curl -fL --progress-bar "$DL_URL" -o "$PKG_FILE"; then
-    die "No pude descargar $DL_URL
-   Verifica tu conexión a internet.
-   Si persiste, contacta: soporte@factutpv.es"
-fi
+# --- Resolve release + download checksums first -----------------
+# /releases/latest/download is mutable between requests. Resolve its first
+# redirect to an immutable /releases/download/<tag> base, then use only that
+# base for both SHA256SUMS and the installer.
+RELEASE_BASE=${BASE%/}
+case "$RELEASE_BASE" in
+  */releases/latest/download)
+    RELEASE_PREFIX=${RELEASE_BASE%/latest/download}
+    REDIRECT_URL=$(curl -fsS -o /dev/null -w '%{redirect_url}' \
+      "$RELEASE_BASE/SHA256SUMS") \
+      || die "No pude resolver la release estable para descargar SHA256SUMS."
+    case "$REDIRECT_URL" in
+      "$RELEASE_PREFIX"/download/*/SHA256SUMS) ;;
+      *) die "La redirección de latest no apunta a una release versionada válida." ;;
+    esac
+    RELEASE_PATH=${REDIRECT_URL#"$RELEASE_PREFIX/download/"}
+    RESOLVED_TAG=${RELEASE_PATH%/SHA256SUMS}
+    case "$RESOLVED_TAG" in
+      ""|*/*) die "No pude extraer un tag único de la release resuelta." ;;
+    esac
+    RELEASE_BASE=${REDIRECT_URL%/SHA256SUMS}
+    ;;
+  *)
+    RESOLVED_TAG=${RELEASE_BASE##*/}
+    ;;
+esac
+info "Release fijada: $RESOLVED_TAG"
 
-info "Verificando SHA-256 antes de instalar..."
-if ! curl -fsSL "$BASE/SHA256SUMS" -o "$SUMS_FILE"; then
+info "Descargando SHA256SUMS..."
+if ! curl -fsSL "$RELEASE_BASE/SHA256SUMS" -o "$SUMS_FILE"; then
     die "La release no publica SHA256SUMS; rechazo instalar sin verificación.
    Verifica que el tag corresponde al pipeline de releases actual."
 fi
@@ -169,6 +188,15 @@ EXPECTED_SHA=$(awk -v asset="$ASSET" '
     print sha
   }
 ' "$SUMS_FILE") || die "SHA256SUMS no contiene exactamente una entrada válida para $ASSET"
+
+# --- Download the installer from that exact release -------------
+DL_URL="$RELEASE_BASE/$ASSET"
+info "Descargando $ASSET..."
+if ! curl -fL --progress-bar "$DL_URL" -o "$PKG_FILE"; then
+    die "No pude descargar $DL_URL
+   Verifica tu conexión a internet.
+   Si persiste, contacta: soporte@factutpv.es"
+fi
 
 if command -v sha256sum >/dev/null 2>&1; then
   ACTUAL_SHA=$(sha256sum "$PKG_FILE" | awk '{print tolower($1)}')
