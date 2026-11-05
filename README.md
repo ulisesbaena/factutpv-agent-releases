@@ -128,10 +128,54 @@ y elige el fichero para tu plataforma:
 | Windows 10/11 (x64) | `factutpv-agent-windows-amd64.msi` | Doble clic → Siguiente → Instalar |
 | Debian / Ubuntu / Mint | `factutpv-agent-linux-amd64.deb` | `sudo apt install ./archivo.deb` |
 | Fedora / RHEL / openSUSE | `factutpv-agent-linux-amd64.rpm` | `sudo dnf install ./archivo.rpm` |
+| Android 8.0 (API 26) a Android 17 (API 37) | [`factutpv-agent-android.apk`](https://github.com/ulisesbaena/factutpv-agent-releases/releases/latest/download/factutpv-agent-android.apk) | Descarga el APK y sigue los pasos de Android indicados abajo |
 
 Los binarios "raw" (`factutpv-agent-<os>-<arch>`) también se publican
 para quien prefiera empaquetar manualmente. Su SHA-256 está en
 `releases.json`.
+
+### Android
+
+La app requiere **Android 8.0 (API 26) o posterior** y es compatible hasta
+**Android 17 (API 37)**. Descarga el APK de la [última release estable](https://github.com/ulisesbaena/factutpv-agent-releases/releases/latest/download/factutpv-agent-android.apk):
+
+1. Abre el enlace desde el teléfono y descarga `factutpv-agent-android.apk`.
+2. Si Android lo solicita, permite a **GitHub** o al navegador que estás
+   usando instalar aplicaciones desconocidas. En algunos dispositivos el
+   ajuste aparece en **Ajustes → Aplicaciones → Acceso especial → Instalar
+   aplicaciones desconocidas**; el nombre puede variar por fabricante.
+3. Abre el APK descargado y confirma **Instalar** en el diálogo del sistema.
+   Si Android muestra un flujo avanzado para instalar apps de un desarrollador
+   no verificado, sigue las indicaciones del sistema. La distribución directa
+   desde GitHub continúa disponible mediante sideloading; la verificación del
+   desarrollador y los pasos de Android se despliegan por fases y pueden variar
+   según región y dispositivo. Consulta la
+   [información oficial sobre verificación de desarrolladores de Android](https://developer.android.com/developer-verification).
+4. Abre FactuTPV Agent. Acepta las notificaciones y el acceso a la red local,
+   USB o Bluetooth cuando Android los solicite y los necesites para el uso
+   previsto. USB y Bluetooth dependen del periférico y de los permisos que
+   ofrezca el dispositivo.
+5. En la app, inicia la vinculación. En otra pestaña, inicia sesión en
+   [factutpv.es](https://factutpv.es), entra en **Ajustes → Agentes → Vincular
+   nuevo** e introduce el código que muestra la app.
+
+Tras reiniciar el teléfono, la app vuelve a iniciar el agente como un
+**servicio en primer plano**; Android muestra una notificación mientras está
+activo. Si Android o el fabricante retrasa o limita el arranque, abre la app.
+Si usas **Forzar detención** desde los ajustes del sistema, Android mantiene la
+app detenida hasta que vuelvas a abrirla.
+
+Para actualizar, usa la opción de actualización dentro de la app. La descarga
+se valida con la firma de la app y Android muestra su confirmación de
+instalación; acepta ese diálogo para completar la actualización.
+
+La release incluye `SHA256SUMS` con el SHA-256 del APK. Para comprobarlo desde
+un ordenador, descarga `SHA256SUMS` y el APK de la misma release y ejecuta
+`grep ' factutpv-agent-android.apk$' SHA256SUMS | sha256sum -c -` en la carpeta
+que contiene ambos ficheros. En macOS sustituye `sha256sum` por `shasum -a 256`.
+En Windows PowerShell, compara la salida de
+`Get-FileHash .\factutpv-agent-android.apk -Algorithm SHA256` con la entrada
+correspondiente de `SHA256SUMS`.
 
 ---
 
