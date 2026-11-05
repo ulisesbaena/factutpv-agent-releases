@@ -15,8 +15,30 @@ require_before() {
   [[ -n "$first_line" && -n "$second_line" && "$first_line" -lt "$second_line" ]]
 }
 
+require_readme_text() {
+  local text=$1
+  if ! grep -Fq "$text" "$repo_root/README.md"; then
+    echo "README Android download contract is missing: $text" >&2
+    exit 1
+  fi
+}
+
 grep -Fq "actions/checkout@$checkout_sha" "$repo_root/.github/workflows/ci.yml"
 grep -Fq "$pwsh_image" "$repo_root/.github/workflows/ci.yml"
+require_readme_text 'factutpv-agent-android.apk'
+require_readme_text 'https://github.com/ulisesbaena/factutpv-agent-releases/releases/latest/download/factutpv-agent-android.apk'
+require_readme_text 'Android 8.0 (API 26)'
+require_readme_text 'Android 17 (API 37)'
+require_readme_text 'GitHub** o al navegador'
+require_readme_text 'flujo avanzado para instalar apps de un desarrollador'
+require_readme_text 'Ajustes → Agentes → Vincular'
+require_readme_text 'Tras reiniciar el teléfono'
+require_readme_text 'servicio en primer plano'
+require_readme_text 'Forzar detención'
+require_readme_text 'firma de la app'
+require_readme_text 'confirmación de'
+require_readme_text '`SHA256SUMS` con el SHA-256 del APK'
+require_readme_text "grep ' factutpv-agent-android.apk$' SHA256SUMS | sha256sum -c -"
 require_before "$repo_root/install.sh" \
   'curl -fsSL "$RELEASE_BASE/SHA256SUMS"' 'DL_URL="$RELEASE_BASE/$ASSET"'
 require_before "$repo_root/install.ps1" \
