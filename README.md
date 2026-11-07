@@ -1,9 +1,28 @@
-# FactuTPV Agent — downloads
+# FactuTPV Agent — Windows, macOS, Linux y Android
 
-Cross-platform print-bridge daemon for the [FactuTPV](https://factutpv.es)
-point-of-sale. This repository hosts **only the distribution artefacts**:
-binaries, installers, and install scripts. The source code lives in a
-separate private repository.
+Agente de impresión para el [TPV FactuTPV](https://factutpv.es), disponible
+para Windows, macOS y Linux, y como app Android que convierte un teléfono,
+tableta o terminal compatible en host del agente. Este repositorio contiene
+**solo los artefactos de distribución**: binarios, instaladores y scripts. El
+código fuente vive en un repositorio privado separado.
+
+## Android: descarga directa del APK
+
+<a href="https://github.com/ulisesbaena/factutpv-agent-releases/releases/latest/download/factutpv-agent-android.apk"><strong>Descargar FactuTPV Agent para Android (APK)</strong></a>
+
+Requiere Android 8 (API 26) a Android 17 (API 37).
+
+1. Descarga el APK en el dispositivo, ábrelo y autoriza la instalación desde
+   el navegador o la app desde la que descargaste el APK si Android lo pide.
+2. Abre FactuTPV Agent y concede los permisos que necesite el transporte elegido.
+3. En la app inicia la vinculación; en FactuTPV ve a **Ajustes → Impresoras →
+   Agentes → Vincular nuevo** e introduce el código de seis dígitos.
+
+La app funciona como servicio en primer plano y puede reiniciarse con el
+dispositivo; **Forzar detención**, Doze y restricciones del fabricante pueden
+impedir que arranque o siga activo. Los permisos y límites dependen de la
+versión de Android y del transporte. Más abajo están los pasos ampliados y la
+verificación del APK.
 
 ---
 
@@ -60,6 +79,14 @@ curl -sSL https://cdn.jsdelivr.net/gh/ulisesbaena/factutpv-agent-releases@main/i
 Detecta automáticamente `apt` / `dnf` / `zypper` y usa el paquete
 adecuado. Registra `factutpv-agent.service` en systemd.
 
+### 🤖 Android
+
+La app Android también puede alojar el agente en un teléfono, tableta o
+terminal. Descarga el
+[APK de la última release estable](https://github.com/ulisesbaena/factutpv-agent-releases/releases/latest/download/factutpv-agent-android.apk)
+y sigue el recorrido corto de arriba; los pasos ampliados están en
+[Instalación manual → Android](#android).
+
 ---
 
 ## 🧪 Instalación **STAGING** (solo para testers)
@@ -93,7 +120,7 @@ iwr -useb https://cdn.jsdelivr.net/gh/ulisesbaena/factutpv-agent-releases@main/i
 Tras instalar, abre `http://localhost:17777/admin`: verás un cartel
 visible "STAGING BUILD" dentro del `config.json` + el código de 6
 dígitos que emparejarás contra **stg.factutpv.es → Ajustes →
-Agentes → Vincular**.
+Impresoras → Agentes → Vincular nuevo agente**.
 
 > ⚠️ No mezcles builds stg con clientes de producción. El agente stg
 > se comunica solo con `api-stg.factutpv.es`; intentar emparejarlo
@@ -128,7 +155,7 @@ y elige el fichero para tu plataforma:
 | Windows 10/11 (x64) | `factutpv-agent-windows-amd64.msi` | Doble clic → Siguiente → Instalar |
 | Debian / Ubuntu / Mint | `factutpv-agent-linux-amd64.deb` | `sudo apt install ./archivo.deb` |
 | Fedora / RHEL / openSUSE | `factutpv-agent-linux-amd64.rpm` | `sudo dnf install ./archivo.rpm` |
-| Android 8.0 (API 26) a Android 17 (API 37) | [`factutpv-agent-android.apk`](https://github.com/ulisesbaena/factutpv-agent-releases/releases/latest/download/factutpv-agent-android.apk) | Descarga el APK y sigue los pasos de Android indicados abajo |
+| Android 8 (API 26) a Android 17 (API 37) | [`factutpv-agent-android.apk`](https://github.com/ulisesbaena/factutpv-agent-releases/releases/latest/download/factutpv-agent-android.apk) | Descarga directa; [pasos de instalación](#android) |
 
 Los binarios "raw" (`factutpv-agent-<os>-<arch>`) también se publican
 para quien prefiera empaquetar manualmente. Su SHA-256 está en
@@ -140,8 +167,8 @@ La app requiere **Android 8.0 (API 26) o posterior** y es compatible hasta
 **Android 17 (API 37)**. Descarga el APK de la [última release estable](https://github.com/ulisesbaena/factutpv-agent-releases/releases/latest/download/factutpv-agent-android.apk):
 
 1. Abre el enlace desde el teléfono y descarga `factutpv-agent-android.apk`.
-2. Si Android lo solicita, permite a **GitHub** o al navegador que estás
-   usando instalar aplicaciones desconocidas. En algunos dispositivos el
+2. Si Android lo solicita, permite al navegador o a la app desde la que
+   descargaste el APK instalar aplicaciones desconocidas. En algunos dispositivos el
    ajuste aparece en **Ajustes → Aplicaciones → Acceso especial → Instalar
    aplicaciones desconocidas**; el nombre puede variar por fabricante.
 3. Abre el APK descargado y confirma **Instalar** en el diálogo del sistema.
@@ -156,8 +183,8 @@ La app requiere **Android 8.0 (API 26) o posterior** y es compatible hasta
    previsto. USB y Bluetooth dependen del periférico y de los permisos que
    ofrezca el dispositivo.
 5. En la app, inicia la vinculación. En otra pestaña, inicia sesión en
-   [factutpv.es](https://factutpv.es), entra en **Ajustes → Agentes → Vincular
-   nuevo** e introduce el código que muestra la app.
+   [factutpv.es](https://factutpv.es), entra en **Ajustes → Impresoras →
+   Agentes → Vincular nuevo agente** e introduce el código que muestra la app.
 
 Tras reiniciar el teléfono, la app vuelve a iniciar el agente como un
 **servicio en primer plano**; Android muestra una notificación mientras está
@@ -181,36 +208,40 @@ correspondiente de `SHA256SUMS`.
 
 ## ¿Qué hace el agente?
 
-El agente es un daemon que corre en un ordenador dentro de tu red
-local y hace de puente entre el navegador (tu TPV en
-[factutpv.es](https://factutpv.es)) y **cualquier impresora
-térmica ESC/POS**:
+El agente corre en un host dentro de tu red local —un ordenador con Windows,
+macOS o Linux, o un dispositivo Android— y conecta FactuTPV con impresoras
+térmicas ESC/POS mediante los protocolos y transportes implementados para cada
+plataforma. No sirve para cualquier impresora instalada ni para protocolos
+propietarios de etiquetas.
 
-- **USB** (cable directo; en Windows sin necesidad de Zadig)
-- **Red LAN / WiFi** (TCP:9100, Epson ePOS, Star WebPRNT)
-- **Bluetooth** (Linux)
-- **Impresoras instaladas en Windows** (vía el spooler nativo)
-- **Auto-descubrimiento** — pulsa un botón y encuentra todas las
-  impresoras accesibles en tu red
+- **Red LAN / WiFi**: TCP:9100, Epson ePOS WebSocket y Star WebPRNT.
+- **Android**: USB RAW/CDC, Bluetooth Classic SPP y BLE; discovery LAN/NSD.
+  Android solicita permisos según el transporte y la versión del sistema; la
+  combinación concreta de terminal, impresora y firmware requiere validación.
+- **USB en Windows**: conexión directa sin necesidad de Zadig para WebUSB.
+- **Bluetooth en Linux** y **spooler de Windows**: según los transportes
+  disponibles en esos hosts.
+- **Descubrimiento**: muestra dispositivos detectables por los transportes
+  implementados; no encuentra necesariamente todas las impresoras de la red.
 
-El navegador le manda los bytes del ticket, el agente los
-reenvía a la impresora. Zero latencia, funciona también cuando
-la pestaña del TPV está cerrada (el backend manda la comanda
-vía WebSocket a tu agente).
+La app Android necesita estar activa para alojar el servicio. En escritorio,
+el agente puede recibir comandas por WebSocket aunque la pestaña del TPV esté
+cerrada.
 
 ---
 
 ## Primeros pasos tras instalar
 
-1. El panel de administración se abre automáticamente en
-   [http://localhost:17777/admin](http://localhost:17777/admin).
-   Verás un código de 6 dígitos grande y centrado.
+1. En escritorio, el panel de administración se abre automáticamente en
+   [http://localhost:17777/admin](http://localhost:17777/admin). En Android,
+   abre la app FactuTPV Agent. Ambos muestran un código de 6 dígitos.
 2. En otra pestaña ve a [factutpv.es](https://factutpv.es),
-   inicia sesión, y navega a **Ajustes → Agentes → Vincular nuevo**.
-3. Teclea el código de 6 dígitos, pulsa **Vincular**, y el panel
-   del agente pasará de "Sin vincular" a "Conectado".
-4. Pulsa **Descubrir impresoras** en el panel. Selecciona la tuya
-   de la lista y pulsa **Test** para imprimir un ticket de prueba.
+   inicia sesión, y navega a **Ajustes → Impresoras → Agentes → Vincular nuevo**.
+3. Teclea el código de 6 dígitos y pulsa **Vincular**. El agente quedará
+   asociado a tu cuenta.
+4. En **Ajustes → Impresoras**, añade una impresora de tipo **Agente**, pulsa
+   **Descubrir impresoras**, selecciona un dispositivo compatible y ejecuta
+   una impresión de prueba.
 
 ---
 
