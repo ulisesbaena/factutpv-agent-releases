@@ -8,7 +8,8 @@
 #      github.com/ulisesbaena/factutpv-agent-releases/releases/latest
 #   2. Lo ejecuta en modo "passive" (barra de progreso visible pero
 #      sin diálogos) — el UAC pedirá permiso UNA sola vez
-#   3. Abre el panel de administración en el navegador
+#   3. Solicita al agente una URL bootstrap autenticada y abre el
+#      panel de administración en el navegador
 #
 # Integridad: fija la release resuelta y verifica SHA-256 contra su
 # SHA256SUMS antes de ejecutar msiexec. Esto detecta corrupción y
@@ -320,9 +321,9 @@ Detalle: $($_.Exception.Message)
 # goroutine after svc.Run returns), so a bare Get-Service check
 # isn't enough. 15 s is generous — on a normal machine the HTTP
 # server is up in <1 s; on a slow laptop or under heavy AV scanning
-# it can take 3-5 s. If the deadline fires we still open the
-# browser page because it'll auto-retry on the "refresh" button
-# once the service catches up.
+# it can take 3-5 s. If the deadline fires we still try to obtain
+# the authenticated bootstrap URL; the operator can rerun the safe
+# command printed below once the service catches up.
 Write-Info "Esperando a que el panel responda..."
 $deadline = (Get-Date).AddSeconds(15)
 $ready = $false
@@ -340,14 +341,51 @@ if ($ready) {
     Write-Warn "Abriremos el navegador — si sale 'conexión rechazada', espera 5 s y pulsa Recargar."
 }
 
-# --- Open admin panel + final guidance --------------------------
-Write-Info "Abriendo panel de administración..."
-try { Start-Process "http://127.0.0.1:17777/admin" } catch {}
+# --- Open authenticated admin panel + final guidance ------------
+#
+# The desktop panel intentionally rejects a bare /admin URL with 401.
+# Ask the installed binary for the bootstrap URL using the exact config,
+# keyring and port mode used by the Windows service. The panel exchanges
+# its one-time ticket for an HttpOnly cookie and immediately redirects to a
+# clean URL. The persistent credential never appears in this URL.
+$agentExe = Join-Path $env:ProgramFiles "FactuTPV Agent\factutpv-agent.exe"
+$agentConfig = Join-Path $env:ProgramData "FactuTPV Agent\config.json"
+$agentKeyring = Join-Path $env:ProgramData "FactuTPV Agent\credentials.json"
+$reopenCommand = '& "$env:ProgramFiles\FactuTPV Agent\factutpv-agent.exe" --config "$env:ProgramData\FactuTPV Agent\config.json" --keyring "$env:ProgramData\FactuTPV Agent\credentials.json" --no-hmac-relay --admin-url'
+$adminOpened = $false
+
+Write-Info "Abriendo panel de administración autenticado..."
+try {
+    $bootstrapUrl = (& $agentExe --config $agentConfig --keyring $agentKeyring --no-hmac-relay --admin-url 2>$null | Select-Object -Last 1).Trim()
+    $bootstrapUri = $null
+    $validUri = [Uri]::TryCreate($bootstrapUrl, [UriKind]::Absolute, [ref]$bootstrapUri)
+    $validBootstrap = $validUri `
+        -and $bootstrapUri.Scheme -eq 'http' `
+        -and $bootstrapUri.Host -eq '127.0.0.1' `
+        -and $bootstrapUri.Port -eq 17777 `
+        -and [string]::IsNullOrEmpty($bootstrapUri.UserInfo) `
+        -and $bootstrapUri.AbsolutePath -eq '/admin/' `
+        -and $bootstrapUri.Query -match '^\?ticket=[A-Za-z0-9_-]{43}$' `
+        -and [string]::IsNullOrEmpty($bootstrapUri.Fragment)
+    if (-not $validBootstrap) {
+        throw "El agente devolvió una URL bootstrap local no válida."
+    }
+    Start-Process $bootstrapUri.AbsoluteUri
+    $adminOpened = $true
+} catch {
+    Write-Warn "No pude abrir automáticamente la sesión autenticada del panel."
+    Write-Warn "Cuando el servicio esté listo, ejecuta el comando indicado al final."
+}
 
 Write-Host ""
 Write-Good "FactuTPV Agent instalado correctamente."
 Write-Host ""
-Write-Host "  Panel de administración: http://127.0.0.1:17777/admin"
+if ($adminOpened) {
+    Write-Host "  Panel de administración: abierto con sesión local autenticada."
+} else {
+    Write-Host "  Obtener URL autenticada del panel:"
+    Write-Host "    $reopenCommand"
+}
 Write-Host "  Editar configuración:"
 Write-Host "    notepad `"C:\ProgramData\FactuTPV Agent\config.json`""
 Write-Host "    (necesitas abrir notepad como administrador)"
