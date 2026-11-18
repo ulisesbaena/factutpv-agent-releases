@@ -44,6 +44,26 @@ require_before "$repo_root/install.sh" \
 require_before "$repo_root/install.ps1" \
   'Invoke-WebRequest -Uri "$releaseBase/SHA256SUMS"' '$url = "$releaseBase/$assetName"'
 
+# Desktop admin access is authenticated. Installers must obtain a bootstrap
+# URL from the installed agent with the exact service config/keyring; opening
+# the bare URL regresses to the customer-visible 401 Unauthorized incident.
+if grep -Eq '(Start-Process|open|xdg-open).*(127\.0\.0\.1|localhost):17777/admin' \
+    "$repo_root/install.ps1" "$repo_root/install.sh"; then
+  echo "installer opens the unauthenticated bare admin URL" >&2
+  exit 1
+fi
+grep -Fq -- '--no-hmac-relay --admin-url' "$repo_root/install.ps1"
+grep -Fq -- '--no-hmac-relay --admin-url' "$repo_root/install.sh"
+grep -Fq 'FactuTPV Agent\credentials.json' "$repo_root/install.ps1"
+grep -Fq '/Library/Application Support/FactuTPV Agent/credentials.json' "$repo_root/install.sh"
+grep -Fq '/var/lib/factutpv-agent/credentials.json' "$repo_root/install.sh"
+grep -Fq "Query -match '^\?ticket=[A-Za-z0-9_-]{43}$'" "$repo_root/install.ps1"
+grep -Fq "^http://127\\.0\\.0\\.1:17777/admin/\\?ticket=[A-Za-z0-9_-]{43}$" "$repo_root/install.sh"
+if grep -Eq '(Query -match|admin_url.*grep).*[?&]token=' "$repo_root/install.ps1" "$repo_root/install.sh"; then
+  echo "installer still accepts a persistent token in the bootstrap URL" >&2
+  exit 1
+fi
+
 cleanup() {
   if [[ -n "${server_pid:-}" ]]; then
     kill "$server_pid" 2>/dev/null || true

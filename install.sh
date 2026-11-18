@@ -17,9 +17,9 @@
 #   4. Instala con sudo usando la herramienta nativa de cada
 #      plataforma (installer / apt / dnf / zypper). Pide tu
 #      contraseña una sola vez.
-#   5. Abre el panel de administración (http://127.0.0.1:17777/admin)
-#      en tu navegador. Ahí ves el código de 6 dígitos para
-#      vincular el agente con tu cuenta FactuTPV.
+#   5. Solicita al agente una URL bootstrap autenticada y abre el
+#      panel de administración en tu navegador. Ahí ves el código
+#      de 6 dígitos para vincular el agente con tu cuenta FactuTPV.
 #
 # Integridad: antes de invocar sudo, el script fija la release resuelta
 # y compara el SHA-256 del instalador con su SHA256SUMS. Esto detecta
@@ -51,6 +51,50 @@ info()  { printf "${BLUE}▸${NC} %s\n" "$*"; }
 good()  { printf "${GREEN}✓${NC} %s\n" "$*"; }
 warn()  { printf "${YELLOW}!${NC} %s\n" "$*"; }
 die()   { printf "${RED}✗${NC} %s\n" "$*" >&2; exit 1; }
+
+# Print the authenticated bootstrap URL using the same config, keyring and
+# --no-hmac-relay port mode as the installed desktop service. A bare /admin
+# URL returns 401 by design; the one-time ticket is immediately exchanged for
+# an HttpOnly cookie and removed from the browser address bar. The persistent
+# credential never appears in this URL.
+admin_bootstrap_url() {
+  local admin_url
+  case "$OS" in
+    darwin)
+      admin_url=$(sudo /usr/local/bin/factutpv-agent \
+        --config "/Library/Application Support/FactuTPV Agent/config.json" \
+        --keyring "/Library/Application Support/FactuTPV Agent/credentials.json" \
+        --no-hmac-relay --admin-url 2>/dev/null | tail -n 1) || return 1
+      ;;
+    linux)
+      admin_url=$(sudo -u factutpv /usr/bin/factutpv-agent \
+        --config /etc/factutpv-agent/config.json \
+        --keyring /var/lib/factutpv-agent/credentials.json \
+        --no-hmac-relay --admin-url 2>/dev/null | tail -n 1) || return 1
+      ;;
+    *) return 1 ;;
+  esac
+  if printf '%s\n' "$admin_url" | grep -Eq '^http://127\.0\.0\.1:17777/admin/\?ticket=[A-Za-z0-9_-]{43}$'; then
+    printf '%s\n' "$admin_url"
+  else
+    return 1
+  fi
+}
+
+open_admin_panel() {
+  local admin_url
+  admin_url=$(admin_bootstrap_url) || return 1
+  case "$OS" in
+    darwin) open "$admin_url" >/dev/null 2>&1 ;;
+    linux)
+      if { [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; } && command -v xdg-open >/dev/null 2>&1; then
+        xdg-open "$admin_url" >/dev/null 2>&1 &
+      else
+        return 1
+      fi
+      ;;
+  esac
+}
 
 # ----------------------------------------------------------------
 # Uninstall mode
@@ -231,8 +275,8 @@ case "$OS" in
     good "Instalado en /usr/local/bin/factutpv-agent"
     good "Servicio com.factutpv.agent registrado en launchd"
     sleep 2
-    info "Abriendo panel de administración en el navegador..."
-    open "http://127.0.0.1:17777/admin" 2>/dev/null || true
+    info "Abriendo panel de administración autenticado..."
+    open_admin_panel || warn "No pude abrir el navegador; usa el comando autenticado indicado al final."
     ;;
 
   linux)
@@ -254,10 +298,10 @@ case "$OS" in
     good "Servicio factutpv-agent.service registrado en systemd"
     sudo systemctl enable --now factutpv-agent.service 2>/dev/null || true
 
-    # Try to open admin panel in browser if there's a GUI session.
-    if [ -n "${DISPLAY:-}" ] && command -v xdg-open >/dev/null 2>&1; then
-      (sleep 2 && xdg-open "http://127.0.0.1:17777/admin") &
-    fi
+    # Try to open the authenticated admin panel if there's a GUI session.
+    sleep 2
+    info "Abriendo panel de administración autenticado..."
+    open_admin_panel || warn "No pude abrir el navegador; usa el comando autenticado indicado al final."
     ;;
 esac
 
@@ -265,7 +309,11 @@ esac
 echo
 good "FactuTPV Agent instalado correctamente."
 echo
-echo "  Panel de administración: http://127.0.0.1:17777/admin"
+echo "  Abrir panel de administración con sesión autenticada:"
+case "$OS" in
+  darwin) echo '    open "$(sudo /usr/local/bin/factutpv-agent --config "/Library/Application Support/FactuTPV Agent/config.json" --keyring "/Library/Application Support/FactuTPV Agent/credentials.json" --no-hmac-relay --admin-url)"' ;;
+  linux)  echo '    xdg-open "$(sudo -u factutpv /usr/bin/factutpv-agent --config /etc/factutpv-agent/config.json --keyring /var/lib/factutpv-agent/credentials.json --no-hmac-relay --admin-url)"' ;;
+esac
 echo "  Editar configuración:"
 case "$OS" in
   darwin) echo "    sudo nano /Library/Application\\ Support/FactuTPV\\ Agent/config.json" ;;

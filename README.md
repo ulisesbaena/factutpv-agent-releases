@@ -117,10 +117,12 @@ $env:FACTUTPV_INSTALL_BASE="https://github.com/ulisesbaena/factutpv-agent-releas
 iwr -useb https://cdn.jsdelivr.net/gh/ulisesbaena/factutpv-agent-releases@main/install.ps1 | iex
 ```
 
-Tras instalar, abre `http://localhost:17777/admin`: verás un cartel
-visible "STAGING BUILD" dentro del `config.json` + el código de 6
-dígitos que emparejarás contra **stg.factutpv.es → Ajustes →
-Impresoras → Agentes → Vincular nuevo agente**.
+Tras instalar, el instalador pide al agente una URL bootstrap autenticada y
+abre el panel automáticamente: verás el código de 6 dígitos que emparejarás
+contra **stg.factutpv.es → Ajustes → Impresoras → Agentes → Vincular
+nuevo agente**. La URL desnuda de `localhost` responde `401 Unauthorized` por
+diseño; para reabrir el panel usa el comando autenticado que imprime el
+instalador.
 
 > ⚠️ No mezcles builds stg con clientes de producción. El agente stg
 > se comunica solo con `api-stg.factutpv.es`; intentar emparejarlo
@@ -218,9 +220,11 @@ propietarios de etiquetas.
 - **Android**: USB RAW/CDC, Bluetooth Classic SPP y BLE; discovery LAN/NSD.
   Android solicita permisos según el transporte y la versión del sistema; la
   combinación concreta de terminal, impresora y firmware requiere validación.
-- **USB en Windows**: conexión directa sin necesidad de Zadig para WebUSB.
-- **Bluetooth en Linux** y **spooler de Windows**: según los transportes
-  disponibles en esos hosts.
+- **USB en Windows**: el agente puede reutilizar dispositivos ya asociados a
+  WinUSB/libusbK con Zadig mediante `USB_RAW`; no hace falta desinstalar el
+  driver. Si se usó Zadig, no selecciones la cola residual `WIN_SPOOLER`.
+- **Bluetooth en Linux** y **spooler de Windows**: `WIN_SPOOLER` requiere que
+  la impresora conserve un driver de impresión de Windows operativo.
 - **Descubrimiento**: muestra dispositivos detectables por los transportes
   implementados; no encuentra necesariamente todas las impresoras de la red.
 
@@ -232,9 +236,10 @@ cerrada.
 
 ## Primeros pasos tras instalar
 
-1. En escritorio, el panel de administración se abre automáticamente en
-   [http://localhost:17777/admin](http://localhost:17777/admin). En Android,
-   abre la app FactuTPV Agent. Ambos muestran un código de 6 dígitos.
+1. En escritorio, el instalador obtiene del agente una URL bootstrap
+   autenticada y abre el panel automáticamente. En Android, abre la app
+   FactuTPV Agent. Ambos muestran un código de 6 dígitos. La URL desnuda de
+   `localhost` devuelve `401` por diseño.
 2. En otra pestaña ve a [factutpv.es](https://factutpv.es),
    inicia sesión, y navega a **Ajustes → Impresoras → Agentes → Vincular nuevo**.
 3. Teclea el código de 6 dígitos y pulsa **Vincular**. El agente quedará
